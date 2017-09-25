@@ -8,6 +8,14 @@ Authors: Daniel Thomson, Levi Faid, Nathan Hardy, Rebecca Wilson
 import sys
 from typing import Tuple
 
+class Piece:
+    """
+    Abstraction useful for modeling Pieces
+    """
+
+    def __init__(self):
+        pass
+
 class Grid:
     """
     Abstraction useful for serialising Grid state
@@ -37,7 +45,7 @@ class Grid:
         for i, row in enumerate(self._grid):
             for j, cell in enumerate(row):
                 if cell:
-                    total += i * self.width + j
+                    total += 1 << (i * self.width + j)
 
         return total
 
