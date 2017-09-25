@@ -31,19 +31,19 @@ class Piece:
 
         return [
             # 2x2
-            cls(((True, True,), (True, True,),), 1),
+            cls('Square', ((True, True,), (True, True,),), 1),
             # 1x4
-            cls(((True, True, True, True,),), 2),
+            cls('Long', ((True, True, True, True,),), 2),
             # s
-            cls(((False, True, True,), (True, True, False,),), 4),
+            cls('S', ((False, True, True,), (True, True, False,),), 4),
             # z
-            cls(((True, True, False,), (False, True, True,),), 4),
+            cls('Z', ((True, True, False,), (False, True, True,),), 4),
             # L
-            cls(((True, True, True,), (True, False, False,),), 4),
+            cls('L', ((True, True, True,), (True, False, False,),), 4),
             # J
-            cls(((True, False, False,), (True, True, True,),), 4),
+            cls('J', ((True, False, False,), (True, True, True,),), 4),
             # T
-            cls(((True, True, True,), (False, True, False,),), 4),
+            cls('T', ((True, True, True,), (False, True, False,),), 4),
         ]
 
     @classmethod
@@ -54,7 +54,8 @@ class Piece:
 
         return [r for p in cls.get_all() for r in p.get_rotations()]
 
-    def __init__(self, locations: Tuple[Tuple[bool]], rotations: int):
+    def __init__(self, name: str, locations: Tuple[Tuple[bool]], rotations: int):
+        self._name = name
         self.locations = locations
         self._rotations = rotations
 
@@ -67,10 +68,13 @@ class Piece:
         tmp = self
 
         for _ in range(self._rotations - 1):
-            tmp = Piece(Piece.rotate(tmp.locations), self._rotations)
+            tmp = Piece(self._name, Piece.rotate(tmp.locations), self._rotations)
             rotations.append(tmp)
 
         return rotations
+
+    def __str__(self):
+        return self._name
 
 class Grid:
     """
@@ -96,6 +100,12 @@ class Grid:
     def length(self):
         return self._length
 
+    def first_empty(self):
+        for _, row in enumerate(self._cells):
+            for x_pos, cell in enumerate(row):
+                if not cell:
+                    return x_pos
+
     def place(self, piece: Piece, coords: Tuple[int, int]) -> Optional['Grid']:
         """
         Tries to place the piece at position (x, y).
@@ -118,12 +128,17 @@ class Grid:
                     cell_y_pos = y_pos + p_y_pos
                     cell_x_pos = x_pos + p_x_pos
 
+                    print('X, Y', (cell_x_pos, cell_y_pos), self._cells[cell_y_pos][cell_x_pos])
+
                     # If both the cell of the piece and the cell of the
                     # Grid are filled, we cannot procede
                     if self._cells[cell_y_pos][cell_x_pos]:
                         return None
 
                     changes.add((cell_x_pos, cell_y_pos))
+
+        print('Current Grid:')
+        print(self)
 
         return Grid(self._width, self._length, tuple(
             tuple(
@@ -141,6 +156,11 @@ class Grid:
 
         return total
 
+    def __str__(self):
+        return '\n'.join([
+            ''.join(['!' if cell else '?' for cell in row]) for row in self._cells
+        ])
+
 ALL_PIECE_ROTATIONS = Piece.get_all_piece_rotations()
 
 def possibilities(grid: Grid, cache: dict):
@@ -149,20 +169,33 @@ def possibilities(grid: Grid, cache: dict):
     the remainder of the Grid
     """
 
+    first_empty = grid.first_empty()
+
+    if first_empty is None:
+        cache[grid] = 0
+        return 0
+
     total = 0
 
-    # TODO: Fix naïvety of scanning x/y
     for y_pos in range(grid.width):
-        for x_pos in range(grid.length):
+        for x_pos in range(first_empty, min(first_empty + 4, grid.length)):
             for piece in ALL_PIECE_ROTATIONS:
                 new_grid = grid.place(piece, (x_pos, y_pos))
-                if new_grid is None:
-                    pass
-                elif new_grid in cache:
-                    total += cache[new_grid]
-                else:
-                    total += possibilities(new_grid, cache)
+                if new_grid is not None:
+                    subtotal = None
+                    if new_grid in cache:
+                        print('New grid')
+                        print(new_grid)
+                        print('Cache hit', cache[new_grid])
+                        subtotal = cache[new_grid]
+                    else:
+                        print('Cache miss')
+                        subtotal = possibilities(new_grid, cache)
+                    if subtotal is not None:
+                        print('Counting', piece, 'added at', (x_pos, y_pos), subtotal)
+                        total += 1 + subtotal
 
+    cache[grid] = total if total != 0 else None
     return total
 
 def result(width: int, length: int) -> int:
