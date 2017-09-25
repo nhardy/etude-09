@@ -6,46 +6,123 @@ Authors: Daniel Thomson, Levi Faid, Nathan Hardy, Rebecca Wilson
 """
 
 import sys
-from typing import Tuple
+from typing import List, Optional, Tuple
+
 
 class Piece:
     """
     Abstraction useful for modeling Pieces
     """
 
-    def __init__(self):
-        pass
+    @staticmethod
+    def rotate(locations: Tuple[Tuple[bool, ...], ...]) -> Tuple[Tuple[bool, ...], ...]:
+        """
+        Helper method for rotating a 2D array one turn clockwise
+        @see https://stackoverflow.com/questions/8421337/rotating-a-two-dimensional-array-in-python
+        """
+
+        return tuple(zip(*locations[::-1]))
+
+    @classmethod
+    def get_all(cls):
+        """
+        Returns a list of all Pieces
+        """
+
+        return [
+            # 2x2
+            cls(((True, True,), (True, True,),), 1),
+            # 1x4
+            cls(((True, True, True, True,),), 2),
+            # s
+            cls(((False, True, True,), (True, True, False,),), 4),
+            # z
+            cls(((True, True, False,), (False, True, True,),), 4),
+            # L
+            cls(((True, True, True,), (True, False, False,),), 4),
+            # J
+            cls(((True, False, False,), (True, True, True,),), 4),
+            # T
+            cls(((True, True, True,), (False, True, False,),), 4),
+        ]
+
+    def __init__(self, locations: Tuple[Tuple[bool]], rotations: int):
+        self.locations = locations
+        self._rotations = rotations
+
+    def get_rotations(self) -> List:
+        """
+        Returns all the rotations for the current Piece
+        """
+
+        rotations = [self]
+        tmp = self
+
+        for _ in range(self._rotations - 1):
+            tmp = Piece(Piece.rotate(tmp.locations), self._rotations)
+            rotations.append(tmp)
+
+        return rotations
 
 class Grid:
     """
-    Abstraction useful for serialising Grid state
+    Abstraction useful for dealing with Grid state.
+    It is important to note that all properties are immuntable.
     """
 
-    def __init__(self, width: int, length: int):
-        self.width = width
-        self.length = length
+    def __init__(self, width: int, length: int, cells: Tuple[Tuple[bool, ...], ...] = None):
+        self._width = width
+        self._length = length
 
-        self._grid = [[False for _ in range(length)] for _ in range(width)]
+        # We're specifically using a tuple of tuples here to
+        # enforce immutability
+        self._cells = cells if cells is not None else tuple(
+            tuple(False for _ in range(length)) for _ in range(width)
+        )
 
-    def fill(self, coords: Tuple[int, int]):
+    # TODO: Fix return type - should be `Optional[Grid]`
+    def place(self, piece: Piece, coords: Tuple[int, int]) -> Optional:
         """
-        Sets the Grid cell at (x, y) as filled
+        Tries to place the piece at position (x, y).
+        If this fails, returns None.
         """
 
         x_pos, y_pos = coords
-        self._grid[x_pos][y_pos] = True
+        piece_locations = piece.locations
 
-    def serialise(self) -> int:
-        """
-        Returns a unique integer representing the state of Grid
-        """
+        if len(piece_locations) + y_pos > self._width:
+            return None
+        if len(piece_locations[0]) + x_pos > self._length:
+            return None
 
+        changes = set()
+
+        for p_y_pos, row in enumerate(piece_locations):
+            for p_x_pos, cell in enumerate(row):
+                if cell:
+                    cell_y_pos = y_pos + p_y_pos
+                    cell_x_pos = x_pos + p_x_pos
+
+                    # If both the cell of the piece and the cell of the
+                    # Grid are filled, we cannot procede
+                    if self._cells[cell_y_pos][cell_x_pos]:
+                        return None
+
+                    changes.add((cell_x_pos, cell_y_pos))
+
+        return Grid(self._width, self._length, tuple(
+            tuple(
+                cell or (False if (cell_x_pos, cell_y_pos) not in changes else True) for cell_x_pos, cell in enumerate(row)
+            ) for cell_y_pos, row in enumerate(self._cells)
+        ))
+
+    def __hash__(self) -> int:
         total = 0
 
-        for i, row in enumerate(self._grid):
+        for i, row in enumerate(self._cells):
             for j, cell in enumerate(row):
                 if cell:
-                    total += 1 << (i * self.width + j)
+                    total += 1 << (i * self._width + j)
 
         return total
 
@@ -69,7 +146,7 @@ def result(width: int, length: int) -> int:
     # TODO: Depth-First Search here
 
     # The Final result will be stored in the empty Grid state
-    return grid_states[Grid(width, length).serialise()]
+    return grid_states[Grid(width, length)]
 
 def main():
     """
