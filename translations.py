@@ -3,13 +3,13 @@ import re
 import math
 
 
-##g = [ [True, True, False, False], [False, True, True, False]]
-##p = [ [True, True, False, False], [True, True, False, False]]
-##b = [ [False, True, True, False], [True, True, False, False]]
-##v = [ [True, True, True, False], [False, False, True, False]]
-##l = [ [False, False, True, False], [True, True, True, False]]
-##r = [ [True, True, True, True], [False, False, False, False]]
-##y = [ [True, True, True, False], [False, True, False, False]]
+##s = [ [True, True, False, False], [False, True, True, False]]
+##o = [ [True, True, False, False], [True, True, False, False]]
+##z = [ [False, True, True, False], [True, True, False, False]]
+##l = [ [True, True, True, False], [False, False, True, False]]
+##j = [ [False, False, True, False], [True, True, True, False]]
+##l = [ [True, True, True, True], [False, False, False, False]]
+##t = [ [True, True, True, False], [False, True, False, False]]
 
 
 def addItem(chart, L):
