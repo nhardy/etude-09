@@ -6,7 +6,7 @@ Authors: Daniel Thomson, Levi Faid, Nathan Hardy, Rebecca Wilson
 """
 
 import sys
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Type
 
 
 class Piece:
@@ -24,7 +24,7 @@ class Piece:
         return tuple(zip(*locations[::-1]))
 
     @classmethod
-    def get_all(cls):
+    def get_all(cls: 'Piece') -> List[Type['Piece']]:
         """
         Returns a list of all Pieces
         """
@@ -46,11 +46,19 @@ class Piece:
             cls(((True, True, True,), (False, True, False,),), 4),
         ]
 
+    @classmethod
+    def get_all_piece_rotations(cls: 'Piece') -> List[Type['Piece']]:
+        """
+        Returns a list of all Pieces and their unique rotations
+        """
+
+        return [r for p in cls.get_all() for r in p.get_rotations()]
+
     def __init__(self, locations: Tuple[Tuple[bool]], rotations: int):
         self.locations = locations
         self._rotations = rotations
 
-    def get_rotations(self) -> List:
+    def get_rotations(self) -> List['Piece']:
         """
         Returns all the rotations for the current Piece
         """
@@ -80,8 +88,7 @@ class Grid:
             tuple(False for _ in range(length)) for _ in range(width)
         )
 
-    # TODO: Fix return type - should be `Optional[Grid]`
-    def place(self, piece: Piece, coords: Tuple[int, int]) -> Optional:
+    def place(self, piece: Piece, coords: Tuple[int, int]) -> Optional['Grid']:
         """
         Tries to place the piece at position (x, y).
         If this fails, returns None.
