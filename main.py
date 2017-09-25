@@ -78,7 +78,7 @@ class Grid:
     It is important to note that all properties are immuntable.
     """
 
-    def __init__(self, width: int, length: int, cells: Tuple[Tuple[bool, ...], ...] = None):
+    def __init__(self, width: int, length: int, cells: Tuple[Tuple[bool, ...], ...]=None):
         self._width = width
         self._length = length
 
@@ -87,6 +87,14 @@ class Grid:
         self._cells = cells if cells is not None else tuple(
             tuple(False for _ in range(length)) for _ in range(width)
         )
+
+    @property
+    def width(self):
+        return self._width
+
+    @property
+    def length(self):
+        return self._length
 
     def place(self, piece: Piece, coords: Tuple[int, int]) -> Optional['Grid']:
         """
@@ -133,6 +141,30 @@ class Grid:
 
         return total
 
+ALL_PIECE_ROTATIONS = Piece.get_all_piece_rotations()
+
+def possibilities(grid: Grid, cache: dict):
+    """
+    Gets the number of different possible ways to fill
+    the remainder of the Grid
+    """
+
+    total = 0
+
+    # TODO: Fix naïvety of scanning x/y
+    for y_pos in range(grid.width):
+        for x_pos in range(grid.length):
+            for piece in ALL_PIECE_ROTATIONS:
+                new_grid = grid.place(piece, (x_pos, y_pos))
+                if new_grid is None:
+                    pass
+                elif new_grid in cache:
+                    total += cache[new_grid]
+                else:
+                    total += possibilities(new_grid, cache)
+
+    return total
+
 def result(width: int, length: int) -> int:
     """
     Returns the number of combinations of carpets possible for
@@ -149,11 +181,10 @@ def result(width: int, length: int) -> int:
     # can simply add the "No. of Combinations" instead of traversing
     # further, if that value had already been calculated.
     grid_states = {}
-
-    # TODO: Depth-First Search here
+    empty_grid = Grid(width, length)
 
     # The Final result will be stored in the empty Grid state
-    return grid_states[Grid(width, length)]
+    return possibilities(empty_grid, grid_states)
 
 def main():
     """
