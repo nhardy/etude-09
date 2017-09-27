@@ -59,6 +59,12 @@ class Piece:
         self.locations = locations
         self._rotations = rotations
 
+    def first_filled_y(self) -> int:
+        for x_pos in range(len(self.locations[0])):
+            for y_pos in range(len(self.locations)):
+                if self.locations[y_pos][x_pos]:
+                    return y_pos
+
     def get_rotations(self) -> List['Piece']:
         """
         Returns all the rotations for the current Piece
@@ -82,6 +88,14 @@ class Grid:
     It is important to note that all properties are immuntable.
     """
 
+    @classmethod
+    def filled(cls: 'Grid', width: int, length: int) -> 'Grid':
+        """
+        Returns a filled Grid of the given size
+        """
+
+        return cls(width, length, tuple(tuple(True for _ in range(length)) for _ in range(width)))
+
     def __init__(self, width: int, length: int, cells: Tuple[Tuple[bool, ...], ...]=None):
         self._width = width
         self._length = length
@@ -100,11 +114,11 @@ class Grid:
     def length(self):
         return self._length
 
-    def first_empty(self):
-        for _, row in enumerate(self._cells):
-            for x_pos, cell in enumerate(row):
-                if not cell:
-                    return x_pos
+    def first_empty(self) -> Optional[Tuple[int, int]]:
+        for x_pos in range(self._length):
+            for y_pos in range(self._width):
+                if not self._cells[y_pos][x_pos]:
+                    return (x_pos, y_pos)
 
     def place(self, piece: Piece, coords: Tuple[int, int]) -> Optional['Grid']:
         """
@@ -115,7 +129,7 @@ class Grid:
         x_pos, y_pos = coords
         piece_locations = piece.locations
 
-        if len(piece_locations) + y_pos > self._width:
+        if y_pos < 0 or len(piece_locations) + y_pos > self._width:
             return None
         if len(piece_locations[0]) + x_pos > self._length:
             return None
@@ -128,17 +142,12 @@ class Grid:
                     cell_y_pos = y_pos + p_y_pos
                     cell_x_pos = x_pos + p_x_pos
 
-                    print('X, Y', (cell_x_pos, cell_y_pos), self._cells[cell_y_pos][cell_x_pos])
-
                     # If both the cell of the piece and the cell of the
                     # Grid are filled, we cannot procede
                     if self._cells[cell_y_pos][cell_x_pos]:
                         return None
 
                     changes.add((cell_x_pos, cell_y_pos))
-
-        print('Current Grid:')
-        print(self)
 
         return Grid(self._width, self._length, tuple(
             tuple(
@@ -156,9 +165,12 @@ class Grid:
 
         return total
 
+    def __eq__(self, other: Type['Grid']):
+        return self._cells == other._cells
+
     def __str__(self):
         return '\n'.join([
-            ''.join(['!' if cell else '?' for cell in row]) for row in self._cells
+            ''.join(['x' if cell else '?' for cell in row]) for row in self._cells
         ])
 
 ALL_PIECE_ROTATIONS = Piece.get_all_piece_rotations()
@@ -169,33 +181,25 @@ def possibilities(grid: Grid, cache: dict):
     the remainder of the Grid
     """
 
+    total = 0
     first_empty = grid.first_empty()
 
-    if first_empty is None:
-        cache[grid] = 0
-        return 0
+    if first_empty is not None:
+        x_pos, y_pos = first_empty
 
-    total = 0
+        for piece in ALL_PIECE_ROTATIONS:
+            first_filled_y = piece.first_filled_y()
+            new_grid = grid.place(piece, (x_pos, y_pos - first_filled_y))
+            if new_grid is not None:
+                subtotal = None
+                if new_grid in cache:
+                    subtotal = cache[new_grid]
+                else:
+                    subtotal = possibilities(new_grid, cache)
+                if subtotal is not None:
+                    total += subtotal
 
-    for y_pos in range(grid.width):
-        for x_pos in range(first_empty, min(first_empty + 4, grid.length)):
-            for piece in ALL_PIECE_ROTATIONS:
-                new_grid = grid.place(piece, (x_pos, y_pos))
-                if new_grid is not None:
-                    subtotal = None
-                    if new_grid in cache:
-                        print('New grid')
-                        print(new_grid)
-                        print('Cache hit', cache[new_grid])
-                        subtotal = cache[new_grid]
-                    else:
-                        print('Cache miss')
-                        subtotal = possibilities(new_grid, cache)
-                    if subtotal is not None:
-                        print('Counting', piece, 'added at', (x_pos, y_pos), subtotal)
-                        total += 1 + subtotal
-
-    cache[grid] = total if total != 0 else None
+    cache[grid] = total
     return total
 
 def result(width: int, length: int) -> int:
@@ -214,6 +218,8 @@ def result(width: int, length: int) -> int:
     # can simply add the "No. of Combinations" instead of traversing
     # further, if that value had already been calculated.
     grid_states = {}
+    filled_grid = Grid.filled(width, length)
+    grid_states[filled_grid] = 1
     empty_grid = Grid(width, length)
 
     # The Final result will be stored in the empty Grid state
