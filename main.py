@@ -102,22 +102,34 @@ class Grid:
 
         # We're specifically using a tuple of tuples here to
         # enforce immutability
-        self._cells = cells if cells is not None else tuple(
+        self.cells = cells if cells is not None else tuple(
             tuple(False for _ in range(length)) for _ in range(width)
         )
 
     @property
     def width(self):
+        """
+        Gets the width
+        """
+
         return self._width
 
     @property
     def length(self):
+        """
+        Gets the length
+        """
+
         return self._length
 
     def first_empty(self) -> Optional[Tuple[int, int]]:
+        """
+        Gets the (x, y) coordinate of the first empty cell in the Grid
+        """
+
         for x_pos in range(self._length):
             for y_pos in range(self._width):
-                if not self._cells[y_pos][x_pos]:
+                if not self.cells[y_pos][x_pos]:
                     return (x_pos, y_pos)
 
     def place(self, piece: Piece, coords: Tuple[int, int]) -> Optional['Grid']:
@@ -144,7 +156,7 @@ class Grid:
 
                     # If both the cell of the piece and the cell of the
                     # Grid are filled, we cannot procede
-                    if self._cells[cell_y_pos][cell_x_pos]:
+                    if self.cells[cell_y_pos][cell_x_pos]:
                         return None
 
                     changes.add((cell_x_pos, cell_y_pos))
@@ -152,13 +164,13 @@ class Grid:
         return Grid(self._width, self._length, tuple(
             tuple(
                 cell or (False if (cell_x_pos, cell_y_pos) not in changes else True) for cell_x_pos, cell in enumerate(row)
-            ) for cell_y_pos, row in enumerate(self._cells)
+            ) for cell_y_pos, row in enumerate(self.cells)
         ))
 
     def __hash__(self) -> int:
         total = 0
 
-        for i, row in enumerate(self._cells):
+        for i, row in enumerate(self.cells):
             for j, cell in enumerate(row):
                 if cell:
                     total += 1 << (i * self._width + j)
@@ -166,16 +178,16 @@ class Grid:
         return total
 
     def __eq__(self, other: Type['Grid']):
-        return self._cells == other._cells
+        return self.cells == other.cells
 
     def __str__(self):
         return '\n'.join([
-            ''.join(['x' if cell else '?' for cell in row]) for row in self._cells
+            ''.join(['x' if cell else '?' for cell in row]) for row in self.cells
         ])
 
 ALL_PIECE_ROTATIONS = Piece.get_all_piece_rotations()
 
-def possibilities(grid: Grid, cache: dict):
+def possibilities(grid: Type[Grid], cache: dict):
     """
     Gets the number of different possible ways to fill
     the remainder of the Grid
